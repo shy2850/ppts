@@ -1,0 +1,34 @@
+pre {
+    min-width: 600px;
+}
+slides > slide,
+slides > slide.far-past,
+slides > slide.far-next {
+  display: block;
+  opacity: 0;
+}
+.mermaid {
+    display: inline-block;
+    padding: 0;
+    line-height: 14px;
+}
+slide:not(:first-child) article {
+    min-height: 560px;
+}
+slide + slide,
+h2 {
+    text-align: left;
+}
+ul,
+ol {
+    display: block;
+    padding: 0 0 0 20px;
+}
+ul ul,
+ul ol,
+ol ol,
+ol ul,
+ul li ul{
+    padding: 0;
+    margin: 0 0 0 2em;
+}

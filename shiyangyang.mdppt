@@ -1,0 +1,336 @@
+title: 述职
+speaker: 时扬扬
+files: css/ppt.css
+
+[slide]
+# 述职报告
+  时扬扬
+
+[slide]
+## 概述
+
+- icafe前端优化历程
+- 前端分离基础库搭建配置
+- ueditor版本升级和维护
+
+[slide]
+## icafe前端持续优化历程
+
+1. 异步页面资源升级 {:&.moveIn}
+1. 资源合并重组（包括拆分、合并）
+    - CDN 使用
+1. 核心功能模块的体验优化
+1. 前端分离基础库应用
+   ...
+
+[slide]
+## 异步页面资源升级 
+
+- 表现：异步请求页面无缓存加载大量js
+- 原因：资源分布不合理
+```
+graph TB
+    subgraph 线上环境
+        D1[a.js] -- packTo --> E[pkg.js]
+        D2[b.js] -- packTo --> E[pkg.js]
+        D3[c.js] -- packTo --> E[pkg.js]
+        E[pkg.js] -- requireTo --> C1[a.jsp]
+        E[pkg.js] -- requireTo --> C2[b.jsp]
+    end
+
+    subgraph 开发环境
+        A1[a.jsp] -- require --> B1[a.js]
+        A2[b.jsp] -- require --> B2[b.js]
+    end
+```
+
+[slide]
+## 异步页面资源升级
+
+- 方案
+    1. 分离部分已经合并的资源 （×）
+    1. 相关场景的前后分离改造 （×）
+    1. 模块资源提升到父级页面载体 （√）
+        - 后续合并优化需要
+        - 相对规范的模块化代码书写
+
+```
+graph LR
+    A[a.js] -- packTo --> C[pkg.js]
+    B[b.js] -- packTo --> C
+    C -- requireTo --> D[parent.jsp]
+    D -- contains --> E[ajax-a]
+    D -- contains --> F[ajax-b]
+```
+- 总结
+    1. 快速掌握FIS构建工具
+    1. 梳理核心场景异步请求页面整体逻辑
+
+
+[slide]
+## 资源合并重组
+
+- 原因
+    1. 第三方库和业务代码合并
+    1. 部分合并资源过大
+    1. 请求数过多 (10K内小文件较多)
+- 操作
+    1. 分离合并第三方库代码
+    1. 引入CDN
+        - 梳理资源依赖
+            - jquery/bootstrap 版本问题 （评估风险 & 嵌入代码）
+        - 了解相关插件功能和版本差异
+            - handlebars低版本引入和模板改写
+        - ueditor需要功能维护无法迁移 （×）
+
+[slide]
+## 资源合并请求对比
+
+```
+chart height: 400px; width: 800px;
+    backgroundColor: '#fff',
+    title: {
+        text: '资源合并请求对比',
+        subtext: '对比主要页面请求数变化'
+    },
+    tooltip: {
+        trigger: 'axis',
+        axisPointer: {
+            type: 'shadow'
+        },
+    },
+    legend: {
+        data: ['合并前', '合并后', '前.js', '前.其他', '后.js', '后.其他']
+    },
+    grid: {
+        left: '3%',
+        right: '4%',
+        bottom: '3%',
+        containLabel: true
+    },
+    xAxis: {
+        type: 'value',
+        boundaryGap: [0, 0.01]
+    },
+    yAxis: {
+        type: 'category',
+        data: ['Todo Desk', 'PlanTrack', 'issues']
+    },
+    series: [
+        {
+            name: '前.js',
+            type: 'bar',
+            stack: '合并前',
+            data: [48, 66, 52]
+        },
+        {
+            name: '后.js',
+            type: 'bar',
+            stack: '合并后',
+            data: [20, 32, 25]
+        },
+        {
+            name: '前.其他',
+            stack: '合并前',
+            type: 'bar',
+            data: [42, 73, 57]
+        },
+        {
+            name: '后.其他',
+            stack: '合并后',
+            type: 'bar',
+            data: [27, 58, 52]
+        }
+    ]
+```
+- 总结
+    - 根据业务功能调整资源合并规则, 持续优化的必要性
+
+[slide]
+## 核心功能模块的体验优化
+- issue列表和层级列表
+    - 完全前后分离异步方式，需要改写大量功能模块 （×）
+    - 在异步页面中拼装前端模板，迅速改写 （√）
+        - 接口改写成本
+        - 逻辑梳理风险
+    - 100条数据效果: `2.6M` ==> `400~500K`
+- 总结
+    - 前端思想的另一种应用场景
+
+[slide]
+## 前端分离基础库在iCafe中的应用
+1. 同步（×） or 异步（√）
+    - 更少的首屏加载时间
+    - 方便的跨域资源引入
+    - FIS3提供的缓存问题方案
+2. 独立前端服务
+3. 多模块化方式共存
+    - FIS/mod.js
+    - require.js
+    - 如何寻找差异实现共存？
+4. 已经应用的场景
+    - dashboard 等
+
+[slide]
+## 多模块化方式共存
+```
+// mod.js
+define('moduleId', function () {});
+module = require('moduleId');
+// require.js
+define('moduleId', [], function () {});
+require(['moduleId'], function (module) {});
+```
+```
+graph LR
+A((id)) --> B{window.define}
+B --> C[mod.define]
+B --> D[requirejs.define]
+
+A1((id)) --> B1{window.require}
+B1 -- id is Array --> C1[requirejs.require]
+B1 -- id not Array --> D1[mod.require]
+C1 -- callback --> E1[module]
+D1 -- return --> E2[module]
+
+```
+
+[slide]
+## 前端分离基础库搭建配置
+1. 包管理工具选择
+    - fis3-components （×）
+    - bower-components （×）
+    - npm-packages （√）
+2. FIS3构建流程
+3. antd引入
+    - source （×）
+    - dist (√)
+4. 打包优化
+    - 准入规则
+    - babel6
+    - min文件开发部署处理
+
+[slide]
+## FIS3构建流程
+```
+graph LR
+    B{所有文件<br/>编译完成}
+    
+    B -- NO --> D[fis.compile]
+    D --> E{缓存<br/>过期}
+    E -- YES --> H[单文件编译]
+    E -- NO --> B
+
+    subgraph 打包过程
+        C1[prepackager] --> C2[package]
+        C2 --> C3[postpackager]
+    end
+    B -- YES --> C1
+
+    subgraph 单文件编译过程
+        G1[init&parser] --> G2[postprogressor]
+        G2 --> G3[optimizer]
+        G3 --> G4[cache]
+    end
+
+```
+
+[slide]
+## 准入规则
+```
+var files = [
+    'node_modules/jquery/dist/jquery.js',
+    'node_modules/requirejs/require.js',
+    'node_modules/require-css/css.js',
+    'node_modules/antd/dist/antd.js',
+    'node_modules/react-dom/dist/react-dom.js',
+    'node_modules/react/dist/react.js',
+    'node_modules/redux/dist/redux.js',
+    'node_modules/react-redux/dist/react-redux.js',
+    'node_modules/redux-thunk/dist/redux-thunk.js'
+];
+// 额外添加支持
+fis.set('project.files', [
+    'pages/**'
+].concat(files));
+```
+
+[slide]
+## jsx编译以及模块化封装
+
+- 使用babel6编译jsx并进行AMD模块化封装
+```
+fis.match('pages/(**).jsx', {
+    parser: fis.plugin('plugin-babel6', {
+        plugins: ['babel-plugin-transform-es2015-modules-amd'],
+        presets: ['react', 'es2015']
+    }),
+    rExt: '.js',
+    id: '$1'
+});
+```
+- 完全的ES6编译支持
+```
+import React from 'react'
+import ReactDOM from 'react-dom'
+import $ from 'jquery'
+export const Toggle = (props) => {
+    return (
+        ...
+    );
+};
+```
+
+[slide]
+## min文件开发部署处理
+- 背景： 
+    1. 部分资源开发部署内容差异化 (react 等)
+    2. 大文件编译失败（如：antd）
+- 处理方式:
+    - postprogressor事件中替换读取min文件 （×）
+    - 单文件编译开始之前修改相关参数使之跳过编译 （√）
+```
+graph LR
+    subgraph 编译过程改写
+        A[compile:start] --> B{有min文件}
+        B -- YES --> C1[realpath指向min文件]
+        B -- NO --> C2[realpath指向源文件]
+        C1 --> D[compile]
+        C2 --> D[compile]
+    end
+```
+
+[slide]
+## min文件开发部署处理
+- 配置
+```
+fis
+    .on('compile:start', function (file) {
+        var minFilePath
+            = fis.project.currentMedia() === 'dev'  // dev 环境下不修改文件名
+            ? file.origin
+            : file.origin.replace(/\.(js|css)$/, '.min.$1');
+        var exists = fis.util.exists(minFilePath);
+        // 如果 .min 文件存在 就直接用 .min 文件代替, 否则还需要按照原文件构建
+        // css文件还要检查 图片字体等资源依赖
+        file.useCompile = !exists || minFilePath.match(/\.css$/);
+        file.origin = file.realpath = exists ? minFilePath : file.origin;
+    });
+```
+
+
+[slide]
+## ueditor
+- 1.2.6.1 版本升级到 1.4.3.1
+    - 配置参数变化
+    - 插件和已修复BUG的同步
+- 第一次升级失败
+    - 部分文件上传相关接口不统一
+    - firefox浏览器更新，截图粘贴上传失效
+    - zIndex混乱
+- 体会
+    - 理解规范的必要性
+    - 统一规范的重要性
+
+[slide]
+# Q&A
