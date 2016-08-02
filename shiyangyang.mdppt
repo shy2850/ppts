@@ -10,18 +10,16 @@ files: css/ppt.css
 ## 概述
 
 - icafe前端优化历程
+
 - 前端分离基础库搭建配置
-- ueditor版本升级和维护
 
 [slide]
 ## icafe前端持续优化历程
 
-1. 异步页面资源升级 {:&.moveIn}
+1. 异步页面资源升级
 1. 资源合并重组（包括拆分、合并）
     - CDN 使用
 1. 核心功能模块的体验优化
-1. 前端分离基础库应用
-   ...
 
 [slide]
 ## 异步页面资源升级 
@@ -146,30 +144,47 @@ chart height: 400px; width: 800px;
 - 总结
     - 根据业务功能调整资源合并规则, 持续优化的必要性
 
+
 [slide]
 ## 核心功能模块的体验优化
 - issue列表和层级列表
-    - 完全前后分离异步方式，需要改写大量功能模块 （×）
-    - 在异步页面中拼装前端模板，迅速改写 （√）
-        - 接口改写成本
-        - 逻辑梳理风险
-    - 100条数据效果: `2.6M` ==> `400~500K`
+    - 原因
+        - 服务端渲染，数据量极大
+    - 方案
+        - 完全前后分离异步方式，需要改写大量功能模块 （×）
+        - 在异步页面中拼装前端模板，迅速改写 （√）
+            - 接口改写成本
+            - 逻辑梳理风险
+        - 100条数据效果: `2.6M` ==> `400~500K`
 - 总结
-    - 前端思想的另一种应用场景
+    - 同步的页面使用了异步的方案， 最小化的操作，
+
+
 
 [slide]
-## 前端分离基础库在iCafe中的应用
+## 前端分离基础库搭建配置
+- 原因:
+    1. 资源同步加载首屏速度堪忧
+    2. 三方库依赖混乱
+    3. react前端架构引入
+        - 基本概念简单
+        - ES6 书写减少代码量、提高可读性等
+    4. 同步ET各个系统技术栈，公共化的组件应用
+- 主要方案:
+    1. 模块化方案
+    2. 包管理工具选择
+    3. 打包优化
+
+[slide]
+## 模块化方案
 1. 同步（×） or 异步（√）
     - 更少的首屏加载时间
     - 方便的跨域资源引入
     - FIS3提供的缓存问题方案
-2. 独立前端服务
-3. 多模块化方式共存
+2. 多模块化方式共存
     - FIS/mod.js
     - require.js
     - 如何寻找差异实现共存？
-4. 已经应用的场景
-    - dashboard 等
 
 [slide]
 ## 多模块化方式共存
@@ -196,27 +211,86 @@ D1 -- return --> E2[module]
 ```
 
 [slide]
-## 前端分离基础库搭建配置
-1. 包管理工具选择
-    - fis3-components （×）
-    - bower-components （×）
-    - npm-packages （√）
-2. FIS3构建流程
-3. antd引入
-    - source （×）
-    - dist (√)
-4. 打包优化
-    - 准入规则
-    - babel6
-    - min文件开发部署处理
+## 包管理工具选择
+- fis3-components （×）
+- bower-components （×）
+- npm-packages （√）
+
+包管理工具 | 类库选择 | 垃圾资源 | 标准化
+:-------|:------:|-------:|--------
+fis3-components | 少 | 很少 | 特有commonjs标准
+bower-components | 多而不完善 | 较多 | 比较混乱
+npm-packages | 完善 | 很多 | 标准
+
 
 [slide]
-## FIS3构建流程
+## 打包优化 （一）
+- 避免垃圾资源
+    - 设定准入规则
+```
+    var files = [
+        'node_modules/requirejs/require.js',
+        'node_modules/react/dist/react.js',
+        'node_modules/react-dom/dist/react-dom.js'];
+    fis.set('project.files', [
+        'pages/**'
+    ].concat(files));
+```
+
+[slide]
+## 打包优化 （二）
+- ES6、JSX编译 和 AMD模块封装
+    - 引入babel6
+```
+    fis.match('pages/(**).jsx', {
+        parser: fis.plugin('plugin-babel6', {
+            plugins: ['babel-plugin-transform-es2015-modules-amd'],
+            presets: ['react', 'es2015']
+        }),
+        rExt: '.js',
+        id: '$1'
+    });
+```
+    - 完全的ES6编译支持
+```
+    import React from 'react'
+    import ReactDOM from 'react-dom'
+    import $ from 'jquery'
+    export const Toggle = (props) => {
+        return (
+            ...
+        );
+    };
+```
+
+[slide]
+## 打包优化 （三）
+- min文件开发部署处理
+    1. 资源开发部署内容差异化 (react 等)
+    2. 大文件编译失败（如：antd）
+- 处理方式:
+    - postprogressor事件中替换读取min文件 （×）
+    - 单文件编译开始之前修改相关参数使之跳过编译 （√）
+```
+graph LR
+    subgraph 编译过程改写
+        A[compile:start] --> B{有min文件}
+        B -- YES --> C1[realpath指向min文件]
+        B -- NO --> C2[realpath指向源文件]
+        C1 --> D[compile]
+        C2 --> D[compile]
+    end
+```
+
+[slide]
+## 总结
+- FIS3构建流程
+
 ```
 graph LR
     B{所有文件<br/>编译完成}
     
-    B -- NO --> D[fis.compile]
+    B -- NO --> D[<strong>fis.compile</strong>]
     D --> E{缓存<br/>过期}
     E -- YES --> H[单文件编译]
     E -- NO --> B
@@ -235,102 +309,6 @@ graph LR
 
 ```
 
-[slide]
-## 准入规则
-```
-var files = [
-    'node_modules/jquery/dist/jquery.js',
-    'node_modules/requirejs/require.js',
-    'node_modules/require-css/css.js',
-    'node_modules/antd/dist/antd.js',
-    'node_modules/react-dom/dist/react-dom.js',
-    'node_modules/react/dist/react.js',
-    'node_modules/redux/dist/redux.js',
-    'node_modules/react-redux/dist/react-redux.js',
-    'node_modules/redux-thunk/dist/redux-thunk.js'
-];
-// 额外添加支持
-fis.set('project.files', [
-    'pages/**'
-].concat(files));
-```
-
-[slide]
-## jsx编译以及模块化封装
-
-- 使用babel6编译jsx并进行AMD模块化封装
-```
-fis.match('pages/(**).jsx', {
-    parser: fis.plugin('plugin-babel6', {
-        plugins: ['babel-plugin-transform-es2015-modules-amd'],
-        presets: ['react', 'es2015']
-    }),
-    rExt: '.js',
-    id: '$1'
-});
-```
-- 完全的ES6编译支持
-```
-import React from 'react'
-import ReactDOM from 'react-dom'
-import $ from 'jquery'
-export const Toggle = (props) => {
-    return (
-        ...
-    );
-};
-```
-
-[slide]
-## min文件开发部署处理
-- 背景： 
-    1. 部分资源开发部署内容差异化 (react 等)
-    2. 大文件编译失败（如：antd）
-- 处理方式:
-    - postprogressor事件中替换读取min文件 （×）
-    - 单文件编译开始之前修改相关参数使之跳过编译 （√）
-```
-graph LR
-    subgraph 编译过程改写
-        A[compile:start] --> B{有min文件}
-        B -- YES --> C1[realpath指向min文件]
-        B -- NO --> C2[realpath指向源文件]
-        C1 --> D[compile]
-        C2 --> D[compile]
-    end
-```
-
-[slide]
-## min文件开发部署处理
-- 配置
-```
-fis
-    .on('compile:start', function (file) {
-        var minFilePath
-            = fis.project.currentMedia() === 'dev'  // dev 环境下不修改文件名
-            ? file.origin
-            : file.origin.replace(/\.(js|css)$/, '.min.$1');
-        var exists = fis.util.exists(minFilePath);
-        // 如果 .min 文件存在 就直接用 .min 文件代替, 否则还需要按照原文件构建
-        // css文件还要检查 图片字体等资源依赖
-        file.useCompile = !exists || minFilePath.match(/\.css$/);
-        file.origin = file.realpath = exists ? minFilePath : file.origin;
-    });
-```
-
-
-[slide]
-## ueditor
-- 1.2.6.1 版本升级到 1.4.3.1
-    - 配置参数变化
-    - 插件和已修复BUG的同步
-- 第一次升级失败
-    - 部分文件上传相关接口不统一
-    - firefox浏览器更新，截图粘贴上传失效
-    - zIndex混乱
-- 体会
-    - 理解规范的必要性
-    - 统一规范的重要性
 
 [slide]
 # Q&A
