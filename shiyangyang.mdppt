@@ -4,86 +4,56 @@ files: css/ppt.css
 
 [slide]
 # 述职报告
-  时扬扬
+## iCafe前端优化
+<small>时扬扬</small>
+
 
 [slide]
-## 概述
-
-- icafe前端优化历程
-
-- 前端分离基础库搭建配置
-
-[slide]
-## icafe前端持续优化历程
-
-1. 异步页面资源升级
-1. 资源合并重组（包括拆分、合并）
-    - CDN 使用
-1. 核心功能模块的体验优化
-
-[slide]
-## 异步页面资源升级 
-
-- 表现：异步请求页面无缓存加载大量js
-- 原因：资源分布不合理
-```
-graph TB
-    subgraph 线上环境
-        D1[a.js] -- packTo --> E[pkg.js]
-        D2[b.js] -- packTo --> E[pkg.js]
-        D3[c.js] -- packTo --> E[pkg.js]
-        E[pkg.js] -- requireTo --> C1[a.jsp]
-        E[pkg.js] -- requireTo --> C2[b.jsp]
-    end
-
-    subgraph 开发环境
-        A1[a.jsp] -- require --> B1[a.js]
-        A2[b.jsp] -- require --> B2[b.js]
-    end
-```
-
-[slide]
-## 异步页面资源升级
-
+## icafe前端优化
+- 核心问题
+    - 项目资源请求庞大
+      整站的前端响应较慢, 关键环节用户体验较差
+    - 交互开发方式随意
+      既有DOM操作也有重度模板使用
+    - 持续构建前后混合
+      前后端构建互相依赖, 导致前端需求响应迟钝, 且优化困难
 - 方案
-    1. 分离部分已经合并的资源 （×）
-    1. 相关场景的前后分离改造 （×）
-    1. 模块资源提升到父级页面载体 （√）
-        - 后续合并优化需要
-        - 相对规范的模块化代码书写
-
-```
-graph LR
-    A[a.js] -- packTo --> C[pkg.js]
-    B[b.js] -- packTo --> C
-    C -- requireTo --> D[parent.jsp]
-    D -- contains --> E[ajax-a]
-    D -- contains --> F[ajax-b]
-```
-- 总结
-    1. 快速掌握FIS构建工具
-    1. 梳理核心场景异步请求页面整体逻辑
-
+    - 资源瘦身
+    - 模板引入
+    - 前端分离
 
 [slide]
-## 资源合并重组
+## 资源瘦身
+- 问题 整站的前端响应较慢, 关键环节用户体验较差
+- 原因
+    1. 资源合并不合理
+    2. ajax页面资源依赖混乱
+    3. 服务端页面渲染造成大量冗余数据
+- 方案
+    1. 合并重组
+    1. 异步页面资源升级
+    1. 核心功能模块优化
 
+[slide]
+## 资源瘦身 - 合并重组
+[subslide]
 - 原因
     1. 第三方库和业务代码合并
     1. 部分合并资源过大
     1. 请求数过多 (10K内小文件较多)
-- 操作
+    ![many-js.png](img/many-js.png)
+========
+- 方案
     1. 分离合并第三方库代码
+    1. 按照页面功能分别合并
     1. 引入CDN
         - 梳理资源依赖
             - jquery/bootstrap 版本问题 （评估风险 & 嵌入代码）
         - 了解相关插件功能和版本差异
             - handlebars低版本引入和模板改写
-        - ueditor需要功能维护无法迁移 （×）
-
-[slide]
-## 资源合并请求对比
-
+=========
+- 效果
+  请求数减少 `30%~50%`, 首屏响应时间 `6s~2.5s`
 ```
 chart height: 400px; width: 800px;
     backgroundColor: '#fff',
@@ -141,13 +111,61 @@ chart height: 400px; width: 800px;
         }
     ]
 ```
-- 总结
-    - 根据业务功能调整资源合并规则, 持续优化的必要性
+[/subslide]
 
 
 [slide]
-## 核心功能模块的体验优化
-- issue列表和层级列表
+## 资源瘦身 - 异步页面资源升级 
+[subslide]
+- 原因：ajax页面资源依赖打包不合理
+    ajax页面中掺杂了前端资源，导致每次请求重复加载资源
+```
+graph TB
+    subgraph 线上环境 依赖资源被打包合并到大文件
+        D1[a.js] -- packTo --> E[pkg.js]
+        D2[b.js] -- packTo --> E[pkg.js]
+        D3[c.js] -- packTo --> E[pkg.js]
+        E[pkg.js] -- requireTo --> C1[a.jsp]
+        E[pkg.js] -- requireTo --> C2[b.jsp]
+    end
+
+    subgraph 开发环境 分别依赖资源
+        A1[a.jsp] -- require --> B1[a.js]
+        A2[b.jsp] -- require --> B2[b.js]
+    end
+```
+
+===========
+- 方案
+    1. 分离部分已经合并的资源 （×）
+    1. 相关场景的前后分离改造 （×）
+    1. 模块资源提升到父级页面载体 （√）
+        - 后续合并优化需要
+        - 相对规范的模块化代码书写
+
+```
+graph LR
+    A[a.js] -- packTo --> C[pkg.js]
+    B[b.js] -- packTo --> C
+    C -- requireTo --> D[parent.jsp]
+    D -- contains --> E[ajax-a]
+    D -- contains --> F[ajax-b]
+```
+==========
+- 效果 (数据为估值)
+
+场景 | 新建编辑卡片 | plantrack列表 | 我的任务切换
+:-------|:------:|:-------:|:-------:
+改造前| 2s+ | 5~6s | 1.5s+
+改造后| 0.5s- | 4~5s | 0.3-
+
+- plantrack列表仍有进一步优化的空间
+[/subslide]
+
+
+[slide]
+## 资源瘦身 - 核心功能模块优化
+- plantrack列表前端模板改写
     - 原因
         - 服务端渲染，数据量极大
     - 方案
@@ -155,39 +173,58 @@ chart height: 400px; width: 800px;
         - 在异步页面中拼装前端模板，迅速改写 （√）
             - 接口改写成本
             - 逻辑梳理风险
+    - 效果
         - 100条数据效果: `2.6M` ==> `400~500K`
-- 总结
-    - 同步的页面使用了异步的方案， 最小化的操作，
-
+        - **同步的页面使用了异步的方案, 最小化的操作满足需求。**
 
 
 [slide]
-## 前端分离基础库搭建配置
+## 模板引入
+- 问题
+    - 修改功能和BUG易引起其他问题
+- 原因
+    - 项目中前端交互存在纯DOM操作等, 开发效率不高且维护困难
+- 方案
+
+对比 | 上手难度 | 侵入性 | 交互开发 | 数据渲染 |
+:-------|:------:|-------:|--------|
+dom操作 | 容易 | 无 | 混乱 | 麻烦
+handlebars | 较容易 | 无 | 无 | 方便
+react (√) | 复杂 | 轻微 | 清晰 | 方便
+angular/vue | 复杂 | 严重 | 清晰 | 方便  
+
+
+[slide]
+## 前端分离
 - 原因:
-    1. 资源同步加载首屏速度堪忧
-    2. 三方库依赖混乱
+    1. 前后端构建互相依赖, 导致前端需求响应迟钝, 且优化困难
+    2. 同步模块化资源导致全量加载, 页面首屏响应慢
     3. react前端架构引入
         - 基本概念简单
         - ES6 书写减少代码量、提高可读性等
     4. 同步ET各个系统技术栈，公共化的组件应用
-- 主要方案:
+- 方案:
     1. 模块化方案
-    2. 包管理工具选择
-    3. 打包优化
+    2. 包管理工具
+    3. fis构建工具
+    4. 打包优化
 
 [slide]
-## 模块化方案
-1. 同步（×） or 异步（√）
-    - 更少的首屏加载时间
-    - 方便的跨域资源引入
-    - FIS3提供的缓存问题方案
-2. 多模块化方式共存
+## 前端分离 - 模块化方案
+
+[subslide]
+- 原因
+    - 体验 更少的首屏加载时间
+    - 技术 方便的跨域资源引入
+- 方案
+    - requirejs(AMD)
+- 难题
+  多模块化方式共存
     - FIS/mod.js
     - require.js
     - 如何寻找差异实现共存？
+====================
 
-[slide]
-## 多模块化方式共存
 ```
 // mod.js
 define('moduleId', function () {});
@@ -209,12 +246,15 @@ C1 -- callback --> E1[module]
 D1 -- return --> E2[module]
 
 ```
+[/subslide]
 
 [slide]
-## 包管理工具选择
-- fis3-components （×）
-- bower-components （×）
-- npm-packages （√）
+## 前端分离 - 包管理工具
+- 原因 混乱的第三方插件引入
+- 方案
+    - fis3-components （×）
+    - bower-components （×）
+    - npm-packages （√）
 
 包管理工具 | 类库选择 | 垃圾资源 | 标准化
 :-------|:------:|-------:|--------
@@ -224,66 +264,9 @@ npm-packages | 完善 | 很多 | 标准
 
 
 [slide]
-## 打包优化 （一）
-- 避免垃圾资源
-    - 设定准入规则
-```
-    var files = [
-        'node_modules/requirejs/require.js',
-        'node_modules/react/dist/react.js',
-        'node_modules/react-dom/dist/react-dom.js'];
-    fis.set('project.files', [
-        'pages/**'
-    ].concat(files));
-```
+## 前端分离 - 打包优化
 
-[slide]
-## 打包优化 （二）
-- ES6、JSX编译 和 AMD模块封装
-    - 引入babel6
-```
-    fis.match('pages/(**).jsx', {
-        parser: fis.plugin('plugin-babel6', {
-            plugins: ['babel-plugin-transform-es2015-modules-amd'],
-            presets: ['react', 'es2015']
-        }),
-        rExt: '.js',
-        id: '$1'
-    });
-```
-    - 完全的ES6编译支持
-```
-    import React from 'react'
-    import ReactDOM from 'react-dom'
-    import $ from 'jquery'
-    export const Toggle = (props) => {
-        return (
-            ...
-        );
-    };
-```
-
-[slide]
-## 打包优化 （三）
-- min文件开发部署处理
-    1. 资源开发部署内容差异化 (react 等)
-    2. 大文件编译失败（如：antd）
-- 处理方式:
-    - postprogressor事件中替换读取min文件 （×）
-    - 单文件编译开始之前修改相关参数使之跳过编译 （√）
-```
-graph LR
-    subgraph 编译过程改写
-        A[compile:start] --> B{有min文件}
-        B -- YES --> C1[realpath指向min文件]
-        B -- NO --> C2[realpath指向源文件]
-        C1 --> D[compile]
-        C2 --> D[compile]
-    end
-```
-
-[slide]
-## 总结
+[subslide]
 - FIS3构建流程
 
 ```
@@ -308,6 +291,59 @@ graph LR
     end
 
 ```
+=========
+
+- 原因 
+    - 垃圾资源构建输出
+- 方案 
+    - 设定准入规则
+```
+    var files = [
+        'node_modules/requirejs/require.js',
+        'node_modules/react/dist/react.js',
+        'node_modules/react-dom/dist/react-dom.js'];
+    fis.set('project.files', [
+        'pages/**'
+    ].concat(files));
+```
+    - 只允许指定路径文件编译
+
+============
+- ES6、JSX编译 和 AMD模块封装
+- 原因
+    - 更好的代码可读性
+    - 更方便的组件化开发
+- 方案 引入babel6
+```
+    fis.match('pages/(**).jsx', {
+        parser: fis.plugin('plugin-babel6', {
+            plugins: ['babel-plugin-transform-es2015-modules-amd'],
+            presets: ['react', 'es2015']
+        }),
+        rExt: '.js',
+        id: '$1'
+    });
+```
+============
+- min文件开发部署处理
+- 原因
+    1. 资源开发部署内容差异化 (react 等)
+    2. 大文件编译失败（如：antd）
+- 方案:
+    - postprogressor事件中替换读取min文件 （×）
+    - 单文件编译开始之前修改相关参数使之跳过编译 （√）
+```
+graph LR
+    subgraph 编译过程改写
+        A[compile:start] --> B{有min文件}
+        B -- YES --> C1[realpath指向min文件]
+        B -- NO --> C2[realpath指向源文件]
+        C1 --> D[compile]
+        C2 --> D[compile]
+    end
+```
+[/subslide]
+
 
 
 [slide]

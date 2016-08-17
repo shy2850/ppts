@@ -1,6 +1,7 @@
 pre {
     min-width: 600px;
 }
+.subSlide,
 slides > slide,
 slides > slide.far-past,
 slides > slide.far-next {
@@ -16,9 +17,14 @@ slide:not(:first-child) article {
     min-height: 560px;
 }
 slide + slide,
-h2 {
+slide + slide h2 {
     text-align: left;
 }
+
+img {
+    max-height: 400px;
+}
+
 ul,
 ol {
     display: block;
